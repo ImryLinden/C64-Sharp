@@ -7,7 +7,7 @@ internal sealed class RomMissingDialog : Form
 
     public RomMissingDialog(string which)
     {
-        Text = "C64 Emulator — ROMs missing";
+        Text = "C64-Sharp — ROMs missing";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

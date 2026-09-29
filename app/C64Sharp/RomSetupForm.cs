@@ -13,7 +13,7 @@ internal sealed class RomSetupForm : Form
     {
         _settings = settings;
         _missing = missing;
-        Text = "C64 Emulator";
+        Text = "C64-Sharp";
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(640, 480);
         // Intentionally the default window background color.
@@ -36,7 +36,7 @@ internal sealed class RomSetupForm : Form
                 try { _settings.Save(); } catch { }
                 MessageBox.Show(this,
                     "Settings saved. Please restart the emulator.",
-                    "C64 Emulator",
+                    "C64-Sharp",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }

@@ -87,7 +87,7 @@ public sealed class Emulator : IDisposable
 
     public void Start()
     {
-        try { File.WriteAllText(DebugLogPath, $"--- C64 Emulator {DateTime.Now} ---\n"); } catch { }
+        try { File.WriteAllText(DebugLogPath, $"--- C64-Sharp {DateTime.Now} ---\n"); } catch { }
         DebugLog("Start: CPU reset");
         _cpu.Reset();
         _bus.Drive?.Reset();
