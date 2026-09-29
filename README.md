@@ -1,7 +1,8 @@
 # C64-Sharp — a Commodore 64 emulator in C#
 
-A from-scratch C64 emulator. The goal: boot the real Kernal + BASIC ROMs and
-reach the `READY.` prompt, then keep going — graphics, sound, disk.
+A from-scratch C64 emulator in C#, developed using Muse AI. Successfully
+boots original KERNAL and BASIC ROMs with disk loading support; audio
+implementation is currently in progress.
 
 ![C64-Sharp booting the real Kernal to the READY prompt](screenshot.png)
 
