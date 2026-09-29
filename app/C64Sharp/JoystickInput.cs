@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>USB joystick access via winmm.dll (no extra dependencies).</summary>
 internal static class JoystickInput

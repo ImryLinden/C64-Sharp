@@ -1,7 +1,7 @@
 using C64.Core.Cpu;
 using C64.Core.Memory;
 
-namespace C64Emu;
+namespace C64Sharp;
 
 internal static class Program
 {

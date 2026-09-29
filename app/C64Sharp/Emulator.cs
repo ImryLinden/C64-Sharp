@@ -4,7 +4,7 @@ using C64.Core.Disk;
 using C64.Core.Memory;
 using C64.Core.Vic;
 
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>
 /// The C64 machine: bus, CPU, VIC, SID, CIAs. Runs the emulation on a

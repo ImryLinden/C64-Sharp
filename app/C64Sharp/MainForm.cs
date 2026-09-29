@@ -1,7 +1,7 @@
 using C64.Core.Cia;
 using C64.Core.Vic;
 
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>
 /// The C64 screen: draws the VIC-II framebuffer scaled with nearest-neighbor.
@@ -142,7 +142,7 @@ public sealed class MainForm : Form
         Controls.Add(status);
 
         // Disk activity icon (embedded pixel-art floppy).
-        _diskIcon = LoadEmbeddedIcon("C64Emu.Resources.disk.png");
+        _diskIcon = LoadEmbeddedIcon("C64Sharp.Resources.disk.png");
         _diskIconGreen = TintIcon(_diskIcon, new float[][]
         {
             new float[] { 0.2f, 0.2f, 0.2f, 0, 0 },
@@ -265,15 +265,10 @@ public sealed class MainForm : Form
         return dst;
     }
 
-    private static void ShowAbout()
+    private void ShowAbout()
     {
-        MessageBox.Show(
-            $"C64 Emulator — {AppVersion}\n\n" +
-            "A Commodore 64 emulator in C# (.NET 8).\n" +
-            "CPU: 6510 | VIC-II | SID | CIA x2 | 1541 (HLE)\n\n" +
-            "By Imry Linden and Muse.",
-            "About C64 Emulator",
-            MessageBoxButtons.OK, MessageBoxIcon.Information);
+        using var dlg = new AboutForm(AppVersion);
+        dlg.ShowDialog(this);
     }
 
     private void OnOpenDisk(object? sender, EventArgs e)

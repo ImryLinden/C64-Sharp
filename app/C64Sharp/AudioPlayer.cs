@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>
 /// Streams 16-bit PCM audio via winmm.dll waveOut. No NuGet dependencies.

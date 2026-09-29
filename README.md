@@ -1,4 +1,4 @@
-# C64Emu — a Commodore 64 emulator in C#
+# C64-Sharp — a Commodore 64 emulator in C#
 
 A from-scratch C64 emulator. The goal: boot the real Kernal + BASIC ROMs and
 reach the `READY.` prompt, then keep going — graphics, sound, disk.

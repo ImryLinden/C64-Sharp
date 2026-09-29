@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>Persistent user settings, stored in config\settings.json next to the exe.</summary>
 public sealed class AppSettings

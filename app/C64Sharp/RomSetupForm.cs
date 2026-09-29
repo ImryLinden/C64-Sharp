@@ -1,4 +1,4 @@
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>
 /// Plain host window shown when ROMs are missing at startup.

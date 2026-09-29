@@ -1,4 +1,4 @@
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>Settings dialog: Keyboard / Joystick / ROMs tabs.</summary>
 public sealed class SettingsForm : Form

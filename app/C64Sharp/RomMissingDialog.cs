@@ -1,4 +1,4 @@
-namespace C64Emu;
+namespace C64Sharp;
 
 /// <summary>Shown at startup when a required C64 ROM file cannot be found.</summary>
 internal sealed class RomMissingDialog : Form
