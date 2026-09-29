@@ -14,7 +14,7 @@ src/C64.Core/            Emulator core (no UI dependencies)
   Sid/Sid.cs             SID: 3 voices, ADSR envelopes, ring mod, filter
   Disk/HleDrive.cs       HLE 1541: traps Kernal LOAD ($FFD5), serves .d64 files
   Disk/                  D64 reader, GCR codec, VIA6522, IEC bus (DOS path)
-app/C64Emu/              Windows (WinForms) app: screen, keyboard, waveOut
+app/C64Sharp/            Windows (WinForms) app: screen, keyboard, waveOut
                          sound, USB joystick, settings, disk mounting
 tests/C64.Core.Tests/    xUnit tests — tiny hand-assembled programs
 demo/                    BouncingBall, VicBoot, VicTerm, VicBitmap, SidTune,
@@ -24,16 +24,42 @@ tools/DormannTest/       Klaus Dormann 6502 functional-test runner
 
 ## Build & test
 
+Prerequisites: the [.NET 8 SDK](https://dotnet.microsoft.com/download).
+The core library and tests build anywhere; the Windows app
+(`app/C64Sharp`, `net8.0-windows`) must be built on a Windows machine.
+
 ```sh
-dotnet build
-dotnet test
+dotnet build C64Sharp.sln        # core + tests + demos (any OS)
+dotnet test                      # xUnit suite for the core
+dotnet build C64Sharp.App.sln    # Windows app (Windows only)
 ```
 
-The Windows app (`app/C64Emu`) targets `net8.0-windows` — build it on a
-Windows machine. ROMs are never shipped with this repo: get a legal set
-(e.g. [C64 Forever](https://www.c64forever.com/)) and either drop the files
-in the gitignored `.roms/` folder or pick them in Options → Settings → ROMs
-(the app guides you on first run if they're missing).
+There are no third-party NuGet dependencies — a plain
+`dotnet restore` from nuget.org is all that's needed. (If you open the
+solutions in Visual Studio, just Build; the exe lands in
+`app/C64Sharp/bin/Release/net8.0-windows/`.)
+
+### ROMs
+
+The emulator needs the three original Commodore 64 ROMs (8 KB each).
+They are copyrighted and are **not** in this repo — bring your own legal
+copy, e.g. from [C64 Forever](https://www.c64forever.com/):
+
+| File          | Contents                    |
+|---------------|-----------------------------|
+| `basic.rom`   | BASIC interpreter (901226)  |
+| `kernal.rom`  | Kernal (901227)             |
+| `chargen.rom` | Character generator (901225)|
+
+**For the Windows app:** put the three files in a `.roms` folder next to
+the exe (`app/C64Sharp/bin/Release/net8.0-windows/.roms/`), or pick
+custom locations in the app under Options → Settings → ROMs (saved to
+`config\settings.json` next to the exe). If the ROMs are missing when the
+app starts, it opens the Settings dialog on the ROMs tab and walks you
+through selecting them.
+
+**For tests/demos/tools:** drop the same three files in the `.roms/`
+folder at the repo root (also gitignored).
 
 ## Roadmap
 
