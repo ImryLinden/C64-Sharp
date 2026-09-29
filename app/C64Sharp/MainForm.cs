@@ -96,7 +96,7 @@ public sealed class MainForm : Form
     {
         _emulator = emulator;
         _settings = settings;
-        Text = $"C64 Emulator — {AppVersion}";
+        Text = $"C64-Sharp — {AppVersion}";
         BackColor = Color.Black;
 
         _screen = new ScreenControl { Dock = DockStyle.Fill };
@@ -296,7 +296,7 @@ public sealed class MainForm : Form
         catch (Exception ex)
         {
             MessageBox.Show($"Could not mount disk:\n{ex.Message}",
-                "C64 Emulator", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                "C64-Sharp", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -305,8 +305,8 @@ public sealed class MainForm : Form
     private void UpdateTitle()
     {
         Text = string.IsNullOrEmpty(_diskName)
-            ? $"C64 Emulator — {AppVersion}"
-            : $"C64 Emulator — {AppVersion} — {_diskName}";
+            ? $"C64-Sharp — {AppVersion}"
+            : $"C64-Sharp — {AppVersion} — {_diskName}";
     }
 
     private void UpdateHookCount()

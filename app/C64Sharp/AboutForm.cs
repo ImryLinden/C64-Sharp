@@ -7,7 +7,7 @@ internal sealed class AboutForm : Form
 
     public AboutForm(string version)
     {
-        Text = "About C64 Emulator";
+        Text = "About C64-Sharp";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = false;
@@ -17,7 +17,7 @@ internal sealed class AboutForm : Form
 
         var title = new Label
         {
-            Text = $"C64 Emulator — {version}",
+            Text = $"C64-Sharp — {version}",
             Font = new Font(FontFamily.GenericSansSerif, 11, FontStyle.Bold),
             AutoSize = true,
             Location = new Point(12, 12),

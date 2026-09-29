@@ -9,7 +9,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Version>3.2.0</Version>
     <AssemblyVersion>3.2.0.0</AssemblyVersion>
-    <Product>C64 Emulator</Product>
+    <Product>C64-Sharp</Product>
     <Description>A Commodore 64 emulator in C# (.NET 8).</Description>
   </PropertyGroup>
 
