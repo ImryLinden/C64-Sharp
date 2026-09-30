@@ -6,6 +6,19 @@ implementation is currently in progress.
 
 ![C64-Sharp booting the real Kernal to the READY prompt](screenshot.png)
 
+## Recent improvements
+
+- **Sound.** The SID was rewritten with reSID-style accuracy: real ADSR
+  envelopes (with the authentic hardware delay quirk), combined waveforms,
+  per-voice noise, hard sync, ring modulation, and a resonant
+  lowpass/bandpass/highpass/notch filter. No more beeps — it sings.
+- **Joystick.** Keyboard (numpad) joystick input was fixed with
+  real-hardware CIA Port A behavior, and USB gamepads now work through a
+  Raw Input + HID path — including pads Windows only exposes to
+  DirectInput, which the legacy joystick API can't see. A live **Test**
+  dialog on the Joystick settings tab shows exactly what the C64 sees on
+  Port 2, so mapping buttons takes seconds.
+
 ## Layout
 
 ```
