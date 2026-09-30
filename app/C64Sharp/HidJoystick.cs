@@ -186,6 +186,7 @@ internal static class HidJoystick
         public readonly JoystickInput.State State = new();
         public bool HasReport;
         public bool LoggedError;
+        public bool LoggedFirstReport;
 
         public void Dispose()
         {
@@ -298,13 +299,20 @@ internal static class HidJoystick
                 var header = Marshal.PtrToStructure<RAWINPUTHEADER>(buf);
                 if (header.dwType != RIM_TYPEHID) return;
                 int off = (int)headerSize;
-                uint hidCount = (uint)Marshal.ReadInt32(buf, off);
-                uint hidSize = (uint)Marshal.ReadInt32(buf, off + 4);
+                // RAWHID layout: DWORD dwSizeHid; DWORD dwCount; BYTE bRawData[];
+                uint hidSize = (uint)Marshal.ReadInt32(buf, off);
+                uint hidCount = (uint)Marshal.ReadInt32(buf, off + 4);
                 if (hidCount == 0 || hidSize == 0 || hidSize > 256) return;
                 var report = new byte[hidSize];
                 Marshal.Copy(buf + off + 8, report, 0, (int)hidSize);
                 var ctx = GetOrCreateContext(header.hDevice);
-                if (ctx != null) ParseReport(ctx, report);
+                if (ctx == null) return;
+                if (!ctx.LoggedFirstReport)
+                {
+                    ctx.LoggedFirstReport = true;
+                    try { Emulator.DebugLog($"HidJoystick: first input from '{ctx.Name}': dwSizeHid={hidSize} dwCount={hidCount}"); } catch { }
+                }
+                ParseReport(ctx, report);
             }
             finally { Marshal.FreeHGlobal(buf); }
         }
@@ -422,9 +430,7 @@ internal static class HidJoystick
             { ctx.Dispose(); return null; } // not a joystick / gamepad
 
             ctx.Name = GetProductString(h) is string s && s.Length > 0
-                ? s : $"HID gamepad ({VidPid(path)})";
-
-            // Buttons (usage page 0x09).
+                ? s : $"HID gamepad ({VidPid(path)})";            // Buttons (usage page 0x09).
             if (caps.NumberInputButtonCaps > 0)
             {
                 var bcaps = new HIDP_BUTTON_CAPS[caps.NumberInputButtonCaps];
@@ -464,6 +470,13 @@ internal static class HidJoystick
                     }
                 }
             }
+            try
+            {
+                Emulator.DebugLog($"HidJoystick: '{ctx.Name}' caps: buttons={ctx.ButtonMin}-{ctx.ButtonMax} " +
+                    $"X:{(ctx.HasX ? $"{ctx.XMin}..{ctx.XMax}" : "n/a")} " +
+                    $"Y:{(ctx.HasY ? $"{ctx.YMin}..{ctx.YMax}" : "n/a")} hat:{ctx.HasHat}");
+            }
+            catch { }
             return ctx;
         }
         catch
