@@ -239,6 +239,9 @@ public sealed class SettingsForm : Form
         };
         _joyEnable.CheckedChanged += (_, _) => _work.Joystick.Enabled = _joyEnable.Checked;
         panel.Controls.Add(_joyEnable);
+        var testBtn = new Button { Text = "Test...", Left = 355, Top = 9, Width = 75 };
+        testBtn.Click += (_, _) => OpenJoystickTest();
+        panel.Controls.Add(testBtn);
 
         var devLabel = new Label { Text = "Device", Left = 10, Top = 42, Width = 80 };
         panel.Controls.Add(devLabel);
@@ -299,6 +302,14 @@ public sealed class SettingsForm : Form
         };
         panel.Controls.Add(kbNote);
         tab.Controls.Add(panel);
+    }
+
+    private void OpenJoystickTest()
+    {
+        int i = _joyDevice.SelectedIndex;
+        if (i < 0 || i >= _devices.Count) return;
+        using var dlg = new JoystickTestForm(_devices[i], _work.Joystick);
+        dlg.ShowDialog(this);
     }
 
     private void RefreshDeviceList()
