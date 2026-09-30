@@ -83,10 +83,8 @@ public sealed class MainForm : Form
     private readonly Bitmap _diskIconGreen;  // floppy, drive active (blink phase)
     private readonly Bitmap _diskIconGray;   // floppy, no disk
     private int _lastDiskIconState = -1;
-    private ToolStripMenuItem _joyMenuItem = null!;
-    private ToolStripMenuItem _soundMenuItem = null!;
-    private bool _joystickEnabled;
-    private bool _soundEnabled = true;
+    private bool _joystickEnabled;   // numpad joystick, from settings
+    private bool _soundEnabled;      // from settings
     private byte _joyBits = 0xFF; // Active-low joystick state
     private int _usbJoyId = -1;   // winmm joystick id, or -1 when unavailable
     private const string AppVersion = "Alpha 3.2";
@@ -96,6 +94,8 @@ public sealed class MainForm : Form
     {
         _emulator = emulator;
         _settings = settings;
+        _joystickEnabled = _settings.Joystick.KeyboardEnabled;
+        _soundEnabled = _settings.Audio.Enabled;
         Text = $"C64-Sharp — {AppVersion}";
         BackColor = Color.Black;
 
@@ -104,7 +104,7 @@ public sealed class MainForm : Form
 
         var menu = new MenuStrip();
         var file = new ToolStripMenuItem("File");
-        var openDisk = new ToolStripMenuItem("Open Disk Image (.d64)...", null, OnOpenDisk);
+        var openDisk = new ToolStripMenuItem("Open Disk Image...", null, OnOpenDisk);
         // HLE drive works without the DOS ROM; always enable.
         openDisk.Enabled = true;
         file.DropDownItems.Add(openDisk);
@@ -114,14 +114,6 @@ public sealed class MainForm : Form
         menu.Items.Add(file);
 
         var options = new ToolStripMenuItem("Options");
-        _joyMenuItem = new ToolStripMenuItem("Joystick on Numpad", null, (_, _) => ToggleJoystick());
-        _joyMenuItem.CheckOnClick = true;
-        options.DropDownItems.Add(_joyMenuItem);
-        _soundMenuItem = new ToolStripMenuItem("Sound", null, (_, _) => ToggleSound());
-        _soundMenuItem.CheckOnClick = true;
-        _soundMenuItem.Checked = true;
-        options.DropDownItems.Add(_soundMenuItem);
-        options.DropDownItems.Add(new ToolStripSeparator());
         options.DropDownItems.Add(new ToolStripMenuItem("Settings...", null, (_, _) => OpenSettings()));
         menu.Items.Add(options);
 
@@ -164,6 +156,7 @@ public sealed class MainForm : Form
         // Try audio; continue silently without it.
         try { _audio = new AudioPlayer(); }
         catch { _audio = null; }
+        _emulator.SetAudioEnabled(_soundEnabled);
 
         _uiTimer = new System.Windows.Forms.Timer { Interval = 20 };
         _uiTimer.Tick += (_, _) => { PresentFrame(); PumpAudio(); PollUsbJoystick(); UpdateHookCount(); UpdateFps(); UpdateDiskIcon(); };
@@ -206,22 +199,6 @@ public sealed class MainForm : Form
     private void Reset()
     {
         _emulator.RequestReset();
-    }
-
-    private void ToggleJoystick()
-    {
-        _joystickEnabled = _joyMenuItem.Checked;
-        if (!_joystickEnabled)
-        {
-            _joyBits = 0xFF;
-            _emulator.SetJoystick(0xFF);
-        }
-    }
-
-    private void ToggleSound()
-    {
-        _soundEnabled = _soundMenuItem.Checked;
-        _emulator.SetAudioEnabled(_soundEnabled);
     }
 
     /// <summary>Blink the disk icon green while the HLE drive is serving data.</summary>
@@ -275,14 +252,21 @@ public sealed class MainForm : Form
     {
         using var dlg = new OpenFileDialog
         {
-            Filter = "D64 disk images (*.d64)|*.d64|All files (*.*)|*.*",
+            Filter = "Disk images (*.d64, *.rp9)|*.d64;*.rp9|" +
+                     "D64 disk images (*.d64)|*.d64|" +
+                     "RP9 packages (*.rp9)|*.rp9|" +
+                     "All files (*.*)|*.*",
             Title = "Open Disk Image",
         };
         if (dlg.ShowDialog(this) != DialogResult.OK) return;
 
         try
         {
-            byte[] data = File.ReadAllBytes(dlg.FileName);
+            // .rp9 is a ZIP of media images: extract and take the first .d64.
+            byte[] data = Path.GetExtension(dlg.FileName)
+                    .Equals(".rp9", StringComparison.OrdinalIgnoreCase)
+                ? Rp9.ExtractDiskBytes(dlg.FileName)
+                : File.ReadAllBytes(dlg.FileName);
             var d64 = new C64.Core.Disk.D64Image(data);
             // Mount to the HLE drive (used for LOAD via Kernal trap).
             _emulator.HleDrive.MountDisk(d64);
@@ -405,6 +389,14 @@ public sealed class MainForm : Form
         {
             _settings = dlg.Result;
             try { _settings.Save(); } catch { }
+            _joystickEnabled = _settings.Joystick.KeyboardEnabled;
+            if (!_joystickEnabled)
+            {
+                _joyBits = 0xFF;
+                _emulator.SetJoystick(0xFF);
+            }
+            _soundEnabled = _settings.Audio.Enabled;
+            _emulator.SetAudioEnabled(_soundEnabled);
             ApplyJoystickDevice();
         }
     }

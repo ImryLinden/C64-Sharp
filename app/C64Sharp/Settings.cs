@@ -7,6 +7,7 @@ public sealed class AppSettings
 {
     public KeyboardSettings Keyboard { get; set; } = new();
     public JoystickSettings Joystick { get; set; } = new();
+    public AudioSettings Audio { get; set; } = new();
     public RomSettings Roms { get; set; } = new();
 
     public static string ConfigDir =>
@@ -33,6 +34,7 @@ public sealed class AppSettings
                 {
                     s.Keyboard ??= new KeyboardSettings();
                     s.Joystick ??= new JoystickSettings();
+                    s.Audio ??= new AudioSettings();
                     s.Roms ??= new RomSettings();
                     return s;
                 }
@@ -78,12 +80,18 @@ public sealed class KeyboardSettings
 public sealed class JoystickSettings
 {
     public bool Enabled { get; set; } = false;
+    public bool KeyboardEnabled { get; set; } = false;
     public string DeviceName { get; set; } = "";
     public string Up { get; set; } = "POVUp";
     public string Down { get; set; } = "POVDown";
     public string Left { get; set; } = "POVLeft";
     public string Right { get; set; } = "POVRight";
     public string Fire { get; set; } = "Button1";
+}
+
+public sealed class AudioSettings
+{
+    public bool Enabled { get; set; } = true;
 }
 
 public sealed class RomSettings

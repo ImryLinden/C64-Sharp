@@ -1,6 +1,6 @@
 namespace C64Sharp;
 
-/// <summary>Settings dialog: Keyboard / Joystick / ROMs tabs.</summary>
+/// <summary>Settings dialog: Keyboard / Joystick / Audio / ROMs tabs.</summary>
 public sealed class SettingsForm : Form
 {
     private AppSettings _work;
@@ -36,6 +36,8 @@ public sealed class SettingsForm : Form
     private readonly List<RomRow> _romRows = new();
     private readonly List<JoystickInput.DeviceInfo> _devices = new();
     private CheckBox _joyEnable = null!;
+    private CheckBox _kbJoyEnable = null!;
+    private CheckBox _audioEnable = null!;
     private ComboBox _joyDevice = null!;
     private int? _capturing;
 
@@ -59,15 +61,18 @@ public sealed class SettingsForm : Form
         var tabs = new TabControl { Dock = DockStyle.Fill };
         var tabKeys = new TabPage("Keyboard");
         var tabJoy = new TabPage("Joystick");
+        var tabAudio = new TabPage("Audio");
         var tabRoms = new TabPage("ROMs");
         tabs.TabPages.Add(tabKeys);
         tabs.TabPages.Add(tabJoy);
+        tabs.TabPages.Add(tabAudio);
         tabs.TabPages.Add(tabRoms);
         tabs.SelectedIndex = Math.Clamp(initialTab, 0, tabs.TabCount - 1);
         Controls.Add(tabs);
 
         BuildKeyboardTab(tabKeys);
         BuildJoystickTab(tabJoy);
+        BuildAudioTab(tabAudio);
         BuildRomsTab(tabRoms);
 
         var bottom = new Panel { Dock = DockStyle.Bottom, Height = 44 };
@@ -273,6 +278,38 @@ public sealed class SettingsForm : Form
             panel.Controls.Add(row.Box);
             top += 32;
         }
+
+        _kbJoyEnable = new CheckBox
+        {
+            Text = "Use keyboard (numpad) as joystick",
+            Checked = _work.Joystick.KeyboardEnabled,
+            Left = 10, Top = top + 12, Width = 320,
+        };
+        _kbJoyEnable.CheckedChanged += (_, _) =>
+            _work.Joystick.KeyboardEnabled = _kbJoyEnable.Checked;
+        panel.Controls.Add(_kbJoyEnable);
+        var kbNote = new Label
+        {
+            Text = "Numpad: 8/2/4/6 = directions, 0 = fire, 7/9/1/3 = diagonals.\n" +
+                   "When a USB joystick is enabled it takes precedence.",
+            Left = 10, Top = top + 38, Width = 440, Height = 40,
+        };
+        panel.Controls.Add(kbNote);
+        tab.Controls.Add(panel);
+    }
+
+    private void BuildAudioTab(TabPage tab)
+    {
+        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+        _audioEnable = new CheckBox
+        {
+            Text = "Enable sound",
+            Checked = _work.Audio.Enabled,
+            Left = 10, Top = 10, Width = 300,
+        };
+        _audioEnable.CheckedChanged += (_, _) =>
+            _work.Audio.Enabled = _audioEnable.Checked;
+        panel.Controls.Add(_audioEnable);
         tab.Controls.Add(panel);
     }
 
@@ -328,6 +365,8 @@ public sealed class SettingsForm : Form
         }
         _capturing = null;
         _joyEnable.Checked = _work.Joystick.Enabled;
+        _kbJoyEnable.Checked = _work.Joystick.KeyboardEnabled;
+        _audioEnable.Checked = _work.Audio.Enabled;
         int sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName);
         _joyDevice.SelectedIndex = sel >= 0 ? sel : 0;
         foreach (var row in _joyRows)

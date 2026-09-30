@@ -22,7 +22,7 @@ internal sealed class RomSetupForm : Form
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        using (var dlg = new SettingsForm(_settings, initialTab: 2)) // ROMs tab
+        using (var dlg = new SettingsForm(_settings, initialTab: 3)) // ROMs tab
         {
             // Show the missing-ROM message on top of the settings dialog.
             dlg.Shown += (_, _) =>
