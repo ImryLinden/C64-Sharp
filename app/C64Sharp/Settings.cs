@@ -82,6 +82,7 @@ public sealed class JoystickSettings
     public bool Enabled { get; set; } = false;
     public bool KeyboardEnabled { get; set; } = false;
     public string DeviceName { get; set; } = "";
+    public string DeviceSource { get; set; } = "winmm"; // "winmm" or "hid"
     public string Up { get; set; } = "POVUp";
     public string Down { get; set; } = "POVDown";
     public string Left { get; set; } = "POVLeft";

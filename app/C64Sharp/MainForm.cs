@@ -86,8 +86,8 @@ public sealed class MainForm : Form
     private bool _joystickEnabled;   // numpad joystick, from settings
     private bool _soundEnabled;      // from settings
     private byte _joyBits = 0xFF; // Active-low joystick state
-    private int _usbJoyId = -1;   // winmm joystick id, or -1 when unavailable
-    private const string AppVersion = "Alpha 3.6";
+    private JoystickInput.DeviceInfo? _usbDevice; // selected USB joystick (winmm or HID)
+    private const string AppVersion = "Alpha 3.7";
     private string _diskName = "";
 
     public MainForm(Emulator emulator, AppSettings settings)
@@ -163,6 +163,10 @@ public sealed class MainForm : Form
         _uiTimer.Start();
 
         ApplyJoystickDevice();
+
+        // Raw Input for HID gamepads (sees pads winmm doesn't). Needs the window handle.
+        try { HidJoystick.Register(this.Handle); } catch { }
+        FormClosing += (_, _) => { try { HidJoystick.Unregister(); } catch { } };
 
         KeyPreview = true;
         KeyDown += OnKeyDown;
@@ -416,18 +420,22 @@ public sealed class MainForm : Form
         }
     }
 
-    /// <summary>Find the configured USB joystick device (or -1).</summary>
+    /// <summary>Find the configured USB joystick device (winmm or HID).</summary>
     private void ApplyJoystickDevice()
     {
-        _usbJoyId = -1;
+        _usbDevice = null;
         if (!_settings.Joystick.Enabled) return;
         try
         {
-            var devices = JoystickInput.GetDevices();
+            var devices = new List<JoystickInput.DeviceInfo>();
+            try { devices.AddRange(JoystickInput.GetDevices()); } catch { }
+            try { devices.AddRange(HidJoystick.GetDevices()); } catch { }
             if (devices.Count == 0) return;
             string want = _settings.Joystick.DeviceName;
-            var match = devices.Find(d => d.Name == want) ?? devices[0];
-            _usbJoyId = match.Id;
+            string wantSrc = _settings.Joystick.DeviceSource;
+            _usbDevice = devices.Find(d => d.Name == want && d.Source == wantSrc)
+                      ?? devices.Find(d => d.Name == want)
+                      ?? devices[0];
         }
         catch { }
     }
@@ -436,13 +444,17 @@ public sealed class MainForm : Form
     private void PollUsbJoystick()
     {
         if (!_settings.Joystick.Enabled) return;
-        if (_usbJoyId < 0) { ApplyJoystickDevice(); return; }
+        if (_usbDevice == null) { ApplyJoystickDevice(); return; }
         try
         {
-            if (JoystickInput.TryGetState(_usbJoyId, out var st) && st != null)
+            JoystickInput.State? st = null;
+            bool ok = _usbDevice.Source == "hid"
+                ? HidJoystick.TryGetState(_usbDevice.Path, out st)
+                : JoystickInput.TryGetState(_usbDevice.Id, out st);
+            if (ok && st != null)
                 _emulator.SetJoystick(JoystickInput.ToC64Byte(st, _settings.Joystick));
             else
-                _usbJoyId = -1; // device lost; re-enumerate next tick
+                _usbDevice = null; // device lost; re-enumerate next tick
         }
         catch { }
     }
@@ -569,6 +581,16 @@ public sealed class MainForm : Form
             keyData == Keys.Up || keyData == Keys.Down)
             return true;
         return base.IsInputKey(keyData);
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        // Route raw HID input to the HID joystick parser.
+        if (m.Msg == HidJoystick.WmInputMessageId)
+        {
+            try { HidJoystick.OnRawInput(m.LParam); } catch { }
+        }
+        base.WndProc(ref m);
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)

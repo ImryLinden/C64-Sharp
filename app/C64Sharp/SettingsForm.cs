@@ -250,7 +250,10 @@ public sealed class SettingsForm : Form
         {
             int i = _joyDevice.SelectedIndex;
             if (i >= 0 && i < _devices.Count)
+            {
                 _work.Joystick.DeviceName = _devices[i].Name;
+                _work.Joystick.DeviceSource = _devices[i].Source;
+            }
         };
         panel.Controls.Add(_joyDevice);
         var refreshBtn = new Button { Text = "Refresh", Left = 355, Top = 37, Width = 75 };
@@ -302,12 +305,14 @@ public sealed class SettingsForm : Form
     {
         _devices.Clear();
         try { _devices.AddRange(JoystickInput.GetDevices()); } catch { }
+        try { _devices.AddRange(HidJoystick.GetDevices()); } catch { }
         _joyDevice.Items.Clear();
         foreach (var d in _devices)
-            _joyDevice.Items.Add(d.Name);
+            _joyDevice.Items.Add(d.Name + (d.Source == "hid" ? " (USB HID)" : ""));
         if (_joyDevice.Items.Count == 0)
             _joyDevice.Items.Add("(no joystick found)");
-        int sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName);
+        int sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName && d.Source == _work.Joystick.DeviceSource);
+        if (sel < 0) sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName);
         _joyDevice.SelectedIndex = sel >= 0 ? sel : 0;
         try { Emulator.DebugLog(JoystickInput.Diagnose()); } catch { }
     }
@@ -381,7 +386,8 @@ public sealed class SettingsForm : Form
         _joyEnable.Checked = _work.Joystick.Enabled;
         _kbJoyEnable.Checked = _work.Joystick.KeyboardEnabled;
         _audioEnable.Checked = _work.Audio.Enabled;
-        int sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName);
+        int sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName && d.Source == _work.Joystick.DeviceSource);
+        if (sel < 0) sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName);
         _joyDevice.SelectedIndex = sel >= 0 ? sel : 0;
         foreach (var row in _joyRows)
         {

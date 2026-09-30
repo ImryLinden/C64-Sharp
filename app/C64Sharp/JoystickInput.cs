@@ -40,6 +40,8 @@ internal static class JoystickInput
     {
         public int Id;
         public string Name = "";
+        public string Source = "winmm"; // "winmm" or "hid"
+        public string Path = "";        // HID device path when Source == "hid"
     }
 
     public static List<DeviceInfo> GetDevices()
