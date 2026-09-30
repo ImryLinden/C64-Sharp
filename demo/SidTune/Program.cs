@@ -27,8 +27,12 @@ var samples = new System.Collections.Generic.List<short>();
 
 Console.WriteLine("Playing...");
 
-// Voice 1: triangle, medium attack, full sustain.
-sid.WriteRegister(0x05, 0x0A); // attack=0, decay=10? Actually 0x0A = A=0, D=10
+// Voice 1: triangle, fast attack, full sustain.
+// Note: decay is set to 0 (fastest) deliberately. The SID's envelope rate
+// counter never resets, so with a slow decay the counter can sit far above
+// the fast release period at gate-off and the release then waits for the
+// 16-bit wrap (the authentic ADSR delay quirk, up to ~65 ms) before starting.
+sid.WriteRegister(0x05, 0x00); // attack=0, decay=0
 sid.WriteRegister(0x06, 0xF0); // sustain=15, release=0
 sid.WriteRegister(0x18, 0x0F); // volume max
 
