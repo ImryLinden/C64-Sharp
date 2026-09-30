@@ -47,7 +47,7 @@ public sealed class C64Bus : IMemoryBus
 
     /// <summary>The keyboard matrix, scanned through CIA1.</summary>
     public KeyboardMatrix Keyboard { get; } = new KeyboardMatrix();
-    private byte _joystickPort2 = 0xFF; // Active-low: bit0=Up,1=Down,2=Left,3=Right,4=Fire
+    private volatile byte _joystickPort2 = 0xFF; // Active-low: bit0=Up,1=Down,2=Left,3=Right,4=Fire
     /// <summary>Set joystick Port 2 state (bits 0-4, active-low).</summary>
     public void SetJoystickPort2(byte state) => _joystickPort2 = state;
 
@@ -83,8 +83,13 @@ public sealed class C64Bus : IMemoryBus
         Cia2 = new Cia6526();
         // CIA1 Port B reads the keyboard matrix rows for the driven columns.
         Cia1.PortBInput = pra => Keyboard.ReadRows(pra);
-        // Joystick Port 2 disabled for now (causes boot hang).
-        // Cia1.PortAInput = () => _joystickPort2;
+        // Joystick Port 2 shares CIA1 Port A with the keyboard columns. The
+        // joystick switches overpower the CIA's high drive, so bits 0-4 of a
+        // $DC00 read always reflect the joystick (wired-AND with the column
+        // latch) even though DDRA=$FF, which is how the Kernal leaves it and
+        // how games expect to read it. Bits 5-7 have no external driver.
+        Cia1.PortAInput = () => _joystickPort2;
+        Cia1.PortAExternalDriverMask = 0x1F;
         Vic = new VicIi(_ram, _charom, _colorRam, getBank: () => (~Cia2.Read(0xDD00) & 3));
 
         // Optional 1541: wire the IEC bus between C64 CIA2 and drive VIA1.

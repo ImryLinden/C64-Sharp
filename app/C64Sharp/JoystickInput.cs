@@ -63,13 +63,52 @@ internal static class JoystickInput
         {
             var buf = new byte[512];
             if (joyGetDevCaps(id, buf, buf.Length) != 0) return null;
-            // JOYCAPS layout: wMid(0), wPid(2), szPname[32] at offset 4 (ANSI).
-            int len = 0;
-            while (len < 32 && buf[4 + len] != 0) len++;
-            string name = Encoding.ASCII.GetString(buf, 4, len).Trim();
+            string name = ParseDeviceName(buf);
             return string.IsNullOrEmpty(name) ? $"Joystick {id}" : name;
         }
         catch { return null; }
+    }
+
+    private static string ParseDeviceName(byte[] buf)
+    {
+        // JOYCAPS layout: wMid(0), wPid(2), szPname[32] at offset 4 (ANSI).
+        int len = 0;
+        while (len < 32 && buf[4 + len] != 0) len++;
+        string name = Encoding.ASCII.GetString(buf, 4, len).Trim();
+        return name;
+    }
+
+    /// <summary>
+    /// Describe what the winmm joystick API reports, for troubleshooting
+    /// devices that show up in Windows' Game Controllers panel but not in
+    /// our list. The caller writes the result to the debug log.
+    /// </summary>
+    public static string Diagnose()
+    {
+        var sb = new StringBuilder();
+        int n;
+        try { n = joyGetNumDevs(); }
+        catch (Exception ex)
+        {
+            return $"Joystick diagnose: joyGetNumDevs threw {ex.GetType().Name}: {ex.Message}";
+        }
+        sb.AppendLine($"Joystick diagnose: joyGetNumDevs() = {n}");
+        for (int i = 0; i < n; i++)
+        {
+            try
+            {
+                var buf = new byte[512];
+                int rc = joyGetDevCaps(i, buf, buf.Length);
+                string name = rc == 0 ? ParseDeviceName(buf) : "(no device)";
+                if (string.IsNullOrEmpty(name)) name = $"Joystick {i}";
+                sb.AppendLine($"  id {i}: joyGetDevCaps -> {rc}, name=\"{name}\"");
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine($"  id {i}: threw {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+        return sb.ToString().TrimEnd();
     }
 
     public sealed class State

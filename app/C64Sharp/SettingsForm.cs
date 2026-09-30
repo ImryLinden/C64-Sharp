@@ -56,7 +56,8 @@ public sealed class SettingsForm : Form
         DefineKeyRows();
         DefineJoyRows();
         DefineRomRows();
-        try { _devices.AddRange(JoystickInput.GetDevices()); } catch { }
+        // Joystick devices are enumerated by RefreshDeviceList() when the
+        // Joystick tab is built (and again on Refresh button clicks).
 
         var tabs = new TabControl { Dock = DockStyle.Fill };
         var tabKeys = new TabPage("Keyboard");
@@ -243,14 +244,8 @@ public sealed class SettingsForm : Form
         panel.Controls.Add(devLabel);
         _joyDevice = new ComboBox
         {
-            Left = 100, Top = 38, Width = 330, DropDownStyle = ComboBoxStyle.DropDownList,
+            Left = 100, Top = 38, Width = 250, DropDownStyle = ComboBoxStyle.DropDownList,
         };
-        foreach (var d in _devices)
-            _joyDevice.Items.Add(d.Name);
-        if (_joyDevice.Items.Count == 0)
-            _joyDevice.Items.Add("(no joystick found)");
-        int sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName);
-        _joyDevice.SelectedIndex = sel >= 0 ? sel : 0;
         _joyDevice.SelectedIndexChanged += (_, _) =>
         {
             int i = _joyDevice.SelectedIndex;
@@ -258,6 +253,11 @@ public sealed class SettingsForm : Form
                 _work.Joystick.DeviceName = _devices[i].Name;
         };
         panel.Controls.Add(_joyDevice);
+        var refreshBtn = new Button { Text = "Refresh", Left = 355, Top = 37, Width = 75 };
+        refreshBtn.Click += (_, _) => RefreshDeviceList();
+        panel.Controls.Add(refreshBtn);
+        RefreshDeviceList();
+        try { Emulator.DebugLog(JoystickInput.Diagnose()); } catch { }
 
         int top = 75;
         foreach (var row in _joyRows)
@@ -296,6 +296,20 @@ public sealed class SettingsForm : Form
         };
         panel.Controls.Add(kbNote);
         tab.Controls.Add(panel);
+    }
+
+    private void RefreshDeviceList()
+    {
+        _devices.Clear();
+        try { _devices.AddRange(JoystickInput.GetDevices()); } catch { }
+        _joyDevice.Items.Clear();
+        foreach (var d in _devices)
+            _joyDevice.Items.Add(d.Name);
+        if (_joyDevice.Items.Count == 0)
+            _joyDevice.Items.Add("(no joystick found)");
+        int sel = _devices.FindIndex(d => d.Name == _work.Joystick.DeviceName);
+        _joyDevice.SelectedIndex = sel >= 0 ? sel : 0;
+        try { Emulator.DebugLog(JoystickInput.Diagnose()); } catch { }
     }
 
     private void BuildAudioTab(TabPage tab)

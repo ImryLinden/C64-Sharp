@@ -39,6 +39,17 @@ public class Cia6526
     public Func<byte>? PortAInput { get; set; }
 
     /// <summary>
+    /// Port A bits with an external driver strong enough to overpower the
+    /// CIA's own output drivers (wired-AND, active-low). On the C64, CIA1
+    /// Port A bits 0-4 are shared between the keyboard columns and joystick
+    /// port 2: the joystick switches pull the lines low even though DDRA=$FF.
+    /// A bit set here reads as (latch &amp; input) when the DDR bit selects
+    /// output, and as input when it selects input. Bits 5-7 have nothing
+    /// external on a stock C64. Defaults to 0 (classic behavior).
+    /// </summary>
+    public byte PortAExternalDriverMask { get; set; }
+
+    /// <summary>
     /// Called when Port A output changes. CIA2 wires this to the IEC bus
     /// (ATN, CLK OUT, DATA OUT).
     /// </summary>
@@ -189,7 +200,14 @@ public class Cia6526
     private byte PortARead()
     {
         byte input = PortAInput != null ? PortAInput() : (byte)0xFF;
-        return (byte)((_pra & _ddra) | (input & ~_ddra));
+        byte ext = PortAExternalDriverMask;
+        // Bits with an external driver: wired-AND of latch and input when the
+        // DDR bit selects output (the CIA's low drive is strong, its high
+        // drive loses to the external pull-down), plain input otherwise.
+        // All other bits: latch when output, input when input.
+        byte driven = (byte)((input & (byte)(_pra | ~_ddra)) & ext);
+        byte classic = (byte)(((_pra & _ddra) | (input & ~_ddra)) & ~ext);
+        return (byte)(driven | classic);
     }
 
     private byte PortBRead()
