@@ -87,7 +87,7 @@ public sealed class MainForm : Form
     private bool _soundEnabled;      // from settings
     private byte _joyBits = 0xFF; // Active-low joystick state
     private int _usbJoyId = -1;   // winmm joystick id, or -1 when unavailable
-    private const string AppVersion = "Alpha 3.3";
+    private const string AppVersion = "Alpha 3.4";
     private string _diskName = "";
 
     public MainForm(Emulator emulator, AppSettings settings)
@@ -104,7 +104,7 @@ public sealed class MainForm : Form
 
         var menu = new MenuStrip();
         var file = new ToolStripMenuItem("File");
-        var openDisk = new ToolStripMenuItem("Open Disk Image...", null, OnOpenDisk);
+        var openDisk = new ToolStripMenuItem("Open Disk / Tape Image...", null, OnOpenDisk);
         // HLE drive works without the DOS ROM; always enable.
         openDisk.Enabled = true;
         file.DropDownItems.Add(openDisk);
@@ -252,8 +252,9 @@ public sealed class MainForm : Form
     {
         using var dlg = new OpenFileDialog
         {
-            Filter = "Disk images (*.d64, *.rp9)|*.d64;*.rp9|" +
+            Filter = "Disk/tape images (*.d64, *.t64, *.rp9)|*.d64;*.t64;*.rp9|" +
                      "D64 disk images (*.d64)|*.d64|" +
+                     "T64 tape images (*.t64)|*.t64|" +
                      "RP9 packages (*.rp9)|*.rp9|" +
                      "All files (*.*)|*.*",
             Title = "Open Disk Image",
@@ -262,16 +263,30 @@ public sealed class MainForm : Form
 
         try
         {
-            // .rp9 is a ZIP of media images: extract and take the first .d64.
-            byte[] data = Path.GetExtension(dlg.FileName)
+            // .rp9 is a ZIP of media images: extract and use the manifest's media.
+            string mediaPath = Path.GetExtension(dlg.FileName)
                     .Equals(".rp9", StringComparison.OrdinalIgnoreCase)
-                ? Rp9.ExtractDiskBytes(dlg.FileName)
-                : File.ReadAllBytes(dlg.FileName);
-            var d64 = new C64.Core.Disk.D64Image(data);
-            // Mount to the HLE drive (used for LOAD via Kernal trap).
-            _emulator.HleDrive.MountDisk(d64);
-            // Also mount to the DOS drive if present (for authenticity).
-            _emulator.Bus.Drive?.MountDisk(d64);
+                ? Rp9.ExtractMediaPath(dlg.FileName)
+                : dlg.FileName;
+            string mediaExt = Path.GetExtension(mediaPath);
+            if (mediaExt.Equals(".t64", StringComparison.OrdinalIgnoreCase))
+            {
+                var t64 = new C64.Core.Disk.T64Image(File.ReadAllBytes(mediaPath));
+                _emulator.HleDrive.MountTape(t64);
+            }
+            else if (mediaExt.Equals(".d64", StringComparison.OrdinalIgnoreCase))
+            {
+                var d64 = new C64.Core.Disk.D64Image(File.ReadAllBytes(mediaPath));
+                // Mount to the HLE drive (used for LOAD via Kernal trap).
+                _emulator.HleDrive.MountDisk(d64);
+                // Also mount to the DOS drive if present (for authenticity).
+                _emulator.Bus.Drive?.MountDisk(d64);
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Unsupported file type '{mediaExt}'.");
+            }
             string name = Path.GetFileName(dlg.FileName);
             _diskName = name;
             UpdateTitle();

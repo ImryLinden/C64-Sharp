@@ -15,10 +15,12 @@ namespace C64.Core.Disk;
 public sealed class HleDrive
 {
     private D64Image? _disk;
+    private T64Image? _tape;
 
-    public void MountDisk(D64Image disk) => _disk = disk;
-    public void UnmountDisk() => _disk = null;
-    public bool HasDisk => _disk != null;
+    public void MountDisk(D64Image disk) { _disk = disk; _tape = null; }
+    public void MountTape(T64Image tape) { _tape = tape; _disk = null; }
+    public void UnmountDisk() { _disk = null; _tape = null; }
+    public bool HasDisk => _disk != null || _tape != null;
 
     /// <summary>UTC time of the last LOAD served; the UI blinks the drive LED while recent.</summary>
     public DateTime LastActivityUtc { get; private set; } = DateTime.MinValue;
@@ -63,9 +65,9 @@ public sealed class HleDrive
         // Debug: record last seen devNum.
         LastDevNum = devNum;
         Log($"TryHandleLoad: PC=${cpu.PC:X4} devNum={devNum} A=${cpu.A:X2} X=${cpu.X:X2} Y=${cpu.Y:X2}");
-        // If a disk is mounted, handle the LOAD regardless of device number.
-        // (The real 1541 is device 8; we emulate it.)
-        if (_disk == null)
+        // If media is mounted, handle the LOAD regardless of device number.
+        // (The real 1541 is device 8; tapes are device 1; we emulate either.)
+        if (_disk == null && _tape == null)
         {
             Log("  -> no disk, not handled");
             return false;
@@ -88,7 +90,18 @@ public sealed class HleDrive
         byte[] fileData;
         ushort loadAddr;
 
-        if (filename == "$")
+        if (_tape != null)
+        {
+            if (!TryLoadFromTape(filename, secAdr, requestedAddr, out fileData, out loadAddr))
+            {
+                // FILE NOT FOUND: set carry, A=$04 (file not found error).
+                cpu.A = 0x04;
+                cpu.SetFlag(StatusFlags.Carry, true);
+                cpu.SimulateRts();
+                return true;
+            }
+        }
+        else if (filename == "$")
         {
             // Directory listing: always loads at $0801 (or requested addr if SECADR=0).
             fileData = BuildDirectoryListing();
@@ -204,7 +217,6 @@ public sealed class HleDrive
     private byte[] BuildDirectoryListing()
     {
         var disk = _disk!;
-        var out_ = new List<byte>();
 
         // BAM (track 18, sector 0): disk name at offset 0x90 (16 bytes), ID at 0xA2.
         byte[] bam = disk.ReadSector(18, 0);
@@ -218,8 +230,6 @@ public sealed class HleDrive
         // BASIC program at $0801. Each line:
         // [next lo][next hi][lineno lo][lineno hi][data...][$00]
         // Directory entries use block count as line number.
-        ushort addr = 0x0801;
-
         var lines = new List<(ushort num, byte[] data)>();
 
         // Header line: 0 "diskname" ID
@@ -283,13 +293,20 @@ public sealed class HleDrive
         freeLine.AddRange(AsciiToPetscii(" BLOCKS FREE."));
         lines.Add((0, freeLine.ToArray()));
 
-        // Emit all lines with proper next pointers.
+        return EmitBasicProgram(lines);
+    }
+
+    /// <summary>Emit directory lines as a BASIC program loadable at $0801.</summary>
+    private static byte[] EmitBasicProgram(List<(ushort num, byte[] data)> lines)
+    {
+        var out_ = new List<byte>();
+        ushort addr = 0x0801;
         for (int i = 0; i < lines.Count; i++)
         {
-            int lineStart = out_.Count;
-            ushort nextAddr = (i == lines.Count - 1) ? (ushort)0 : (ushort)(addr + (out_.Count - lineStart) + 4 + lines[i].data.Length + 1);
-            // Actually compute properly: next = addr + 2+2+data.Length+1
-            nextAddr = (i == lines.Count - 1) ? (ushort)0 : (ushort)(addr + 5 + lines[i].data.Length);
+            // next = addr + 2 (next ptr) + 2 (line number) + data.Length + 1 ($00)
+            ushort nextAddr = (i == lines.Count - 1)
+                ? (ushort)0
+                : (ushort)(addr + 5 + lines[i].data.Length);
             out_.Add((byte)(nextAddr & 0xFF));
             out_.Add((byte)(nextAddr >> 8));
             out_.Add((byte)(lines[i].num & 0xFF));
@@ -298,8 +315,79 @@ public sealed class HleDrive
             out_.Add(0);
             addr = nextAddr;
         }
-
         return out_.ToArray();
+    }
+
+    /// <summary>
+    /// Serve a LOAD from a mounted .t64 tape. T64 file data has no load-address
+    /// header; the load address comes from the directory entry (used when SECADR=1).
+    /// Returns false when the file is not on the tape.
+    /// </summary>
+    private bool TryLoadFromTape(string filename, byte secAdr, ushort requestedAddr,
+        out byte[] fileData, out ushort loadAddr)
+    {
+        fileData = Array.Empty<byte>();
+        loadAddr = 0;
+        var tape = _tape!;
+
+        if (filename == "$")
+        {
+            fileData = BuildTapeDirectoryListing();
+            loadAddr = (secAdr == 0) ? requestedAddr : (ushort)0x0801;
+            return true;
+        }
+
+        foreach (var e in tape.Entries)
+        {
+            // Only match loadable file types: PRG (2), SEQ (1), USR (3).
+            if (e.FileType != 2 && e.FileType != 1 && e.FileType != 3) continue;
+            if (e.Name == filename
+                || (filename.EndsWith("*") && e.Name.StartsWith(filename[..^1])))
+            {
+                fileData = e.Data;
+                loadAddr = (secAdr == 0) ? requestedAddr : e.StartAddress;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private byte[] BuildTapeDirectoryListing()
+    {
+        var tape = _tape!;
+        var lines = new List<(ushort num, byte[] data)>();
+
+        string title = string.IsNullOrWhiteSpace(tape.Description) ? "T64 TAPE" : tape.Description;
+        var header = new List<byte>();
+        header.Add(0x12); // RVS ON
+        header.Add((byte)'"');
+        header.AddRange(AsciiToPetscii(title));
+        header.Add((byte)'"');
+        lines.Add((0, header.ToArray()));
+
+        foreach (var e in tape.Entries)
+        {
+            if (e.FileType != 2 && e.FileType != 1 && e.FileType != 3) continue;
+            int blocks = (e.Data.Length + 253) / 254;
+            string typeStr = e.FileType switch
+            {
+                1 => "SEQ",
+                2 => "PRG",
+                3 => "USR",
+                _ => "???",
+            };
+            var line = new List<byte>();
+            line.AddRange(AsciiToPetscii(blocks.ToString().PadLeft(4)));
+            line.Add((byte)' ');
+            line.Add((byte)'"');
+            line.AddRange(AsciiToPetscii(e.Name));
+            line.Add((byte)'"');
+            while (line.Count < 28) line.Add((byte)' ');
+            line.AddRange(AsciiToPetscii(typeStr));
+            lines.Add(((ushort)blocks, line.ToArray()));
+        }
+
+        return EmitBasicProgram(lines);
     }
 
     private int CountFreeBlocks()
