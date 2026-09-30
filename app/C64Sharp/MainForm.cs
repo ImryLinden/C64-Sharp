@@ -87,7 +87,7 @@ public sealed class MainForm : Form
     private bool _soundEnabled;      // from settings
     private byte _joyBits = 0xFF; // Active-low joystick state
     private int _usbJoyId = -1;   // winmm joystick id, or -1 when unavailable
-    private const string AppVersion = "Alpha 3.2";
+    private const string AppVersion = "Alpha 3.3";
     private string _diskName = "";
 
     public MainForm(Emulator emulator, AppSettings settings)
